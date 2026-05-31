@@ -175,6 +175,13 @@ class PREngineer:
 
             context += "Relevant Source Code:\n"
             found_any = False
+            
+            ast_dependencies = set()
+            try:
+                from utils.ast_parser import extract_local_imports
+            except ImportError:
+                extract_local_imports = None
+
             for f in potential_files:
                 # Basic protection against traversing up
                 if ".." in f: continue
@@ -184,8 +191,24 @@ class PREngineer:
                         with open(full_path, "r", encoding="utf-8", errors="ignore") as file_obj:
                             context += f"--- {f} ---\n{file_obj.read()}\n\n"
                             found_any = True
+                            
+                        # AST Context Upgrade
+                        if full_path.endswith(".py") and extract_local_imports:
+                            deps = extract_local_imports(full_path, repo_path)
+                            for d in deps:
+                                ast_dependencies.add(d)
+                                
                     except Exception as e:
                         logger.warning(f"Failed to read extracted file {f}: {e}")
+                        
+            if ast_dependencies:
+                context += "--- AST Dependency Context ---\n"
+                for dep in ast_dependencies:
+                    try:
+                        with open(dep, "r", encoding="utf-8", errors="ignore") as file_obj:
+                            rel_dep = os.path.relpath(dep, repo_path).replace("\\", "/")
+                            context += f"--- {rel_dep} (Imported Dependency) ---\n{file_obj.read()}\n\n"
+                    except: pass
             if not found_any:
                 context += "No specific files mentioned or found.\n\n"
 
@@ -225,6 +248,22 @@ class PREngineer:
         
         raise Exception("All fallback models failed to generate a response.")
 
+    def verify_syntax(self, code: str, filepath: str) -> tuple[bool, str]:
+        """
+        Pre-Flight Syntax Check to instantly block hallucinated slop.
+        """
+        if not filepath.endswith(".py"):
+            return True, ""
+            
+        import ast
+        try:
+            ast.parse(code)
+            return True, ""
+        except SyntaxError as e:
+            msg = f"SyntaxError at line {e.lineno}, offset {e.offset}: {e.msg}\nCode snippet:\n{e.text}"
+            logger.warning(f"PREngineer: Pre-Flight Syntax Check failed for {filepath} -> {msg}")
+            return False, msg
+
     def parse_and_apply_files(self, response: str, repo_path: str) -> list[str]:
         import re
         pattern = r'<file path="([^"]+)">\s*(.*?)\s*</file>'
@@ -247,6 +286,12 @@ class PREngineer:
                 code = code[:-4].rstrip()
                 
             if ".." in filepath: continue
+            
+            # Pre-flight check
+            is_valid, err_msg = self.verify_syntax(code, filepath)
+            if not is_valid:
+                raise Exception(f"AI generated invalid syntax for {filepath}: {err_msg}")
+                
             full_path = os.path.join(repo_path, filepath.lstrip('/'))
             os.makedirs(os.path.dirname(full_path), exist_ok=True)
             with open(full_path, "w", encoding="utf-8") as f:
@@ -300,8 +345,17 @@ class PREngineer:
                     if "Missing script: \"test\"" in logs or "Missing script: test" in logs:
                         logger.info("PREngineer: Project has no tests configured. Treating successful build as a pass.")
                         return True, logs
-                    logger.warning(f"PREngineer: Tests failed!\n{logs}")
-                    return False, logs
+                        
+                    # Laser-focused error extraction
+                    import re
+                    tb_match = re.search(r'(Traceback \(most recent call last\):.*?)(?=\n\w+:|\Z)', logs, re.DOTALL)
+                    if tb_match:
+                        extracted = "CRITICAL TEST TRACEBACK:\n" + tb_match.group(1)[:2000]
+                    else:
+                        extracted = "TEST FAILURES:\n" + logs[-3000:] # Just grab the last 3k chars if no traceback
+                        
+                    logger.warning(f"PREngineer: Tests failed. Extracted traceback for AI.")
+                    return False, extracted
             except requests.exceptions.ReadTimeout:
                 logger.error("PREngineer: Tests timed out after 5 minutes! Killing container.")
                 container.stop()
@@ -448,7 +502,13 @@ def helper():
                 logger.info(f"PREngineer: AI successfully generated a proposed fix of {len(ai_response)} characters.")
                 
                 # Apply files
-                modified_files = self.parse_and_apply_files(ai_response, repo_path)
+                try:
+                    modified_files = self.parse_and_apply_files(ai_response, repo_path)
+                except Exception as syntax_err:
+                    logger.warning("PREngineer: Syntax error detected in AI response. Triggering immediate retry.")
+                    test_feedback = str(syntax_err)
+                    payload["proposed_fix"] = ai_response
+                    continue
                 
                 if not modified_files:
                     logger.warning("PREngineer: AI response did not contain valid file modifications.")
