@@ -14,6 +14,7 @@ from typing import Callable, Dict, List
 from events import BaseEvent, BountyVerifiedEvent
 
 from utils.database import Database
+from utils.env import load_env_file
 from agents.bounty_radar import BountyRadar
 from agents.scam_detector import ScamDetector
 from agents.pr_engineer import PREngineer
@@ -95,14 +96,8 @@ class Orchestrator:
 
     def load_config(self, config_path: str):
         """Loads configuration settings from a YAML file and .env variables."""
-        if os.path.exists(".env"):
-            with open(".env", "r") as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
-                        key, val = line.split("=", 1)
-                        os.environ[key.strip()] = val.strip()
-                        
+        load_env_file(".env")
+
         try:
             with open(config_path, "r") as f:
                 self.config = yaml.safe_load(f)

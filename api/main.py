@@ -14,6 +14,7 @@ import asyncio
 import requests
 import datetime
 from utils.database import Database
+from utils.env import load_env_file
 from agents.code_reviewer import CodeReviewer
 
 app = FastAPI()
@@ -37,6 +38,7 @@ SECRET_CONFIG_KEYS = ("github_token",)
 
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "bounty_tracker.db")
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.yaml")
+ENV_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
 ACTIVITY_LOG = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ollama_activity.json")
 ORCHESTRATOR_LOG = os.path.join(os.path.dirname(os.path.dirname(__file__)), "codemechanic.log")
 UI_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ui")
@@ -44,8 +46,12 @@ BOT_PROCESS = None
 LOG_FILE_HANDLE = None
 
 def load_env_from_config():
-    """Ensures environment variables like GITHUB_TOKEN are loaded for standalone agents."""
-    if os.path.exists(CONFIG_PATH):
+    """
+    Ensures GITHUB_TOKEN is available to the dashboard process. Prefers .env (the
+    same file the orchestrator reads), then falls back to a token in config.yaml.
+    """
+    load_env_file(ENV_PATH)
+    if not os.environ.get("GITHUB_TOKEN") and os.path.exists(CONFIG_PATH):
         try:
             with open(CONFIG_PATH, "r") as f:
                 cfg = yaml.safe_load(f) or {}
@@ -56,6 +62,7 @@ def load_env_from_config():
 
 @app.on_event("startup")
 async def start_pr_poller():
+    load_env_from_config()
     asyncio.create_task(poll_prs_loop())
 
 async def poll_prs_loop():
