@@ -54,7 +54,7 @@ class ContentEngine:
             f"We detected an open bounty on GitHub for this issue. Our ScamDetector validated the repository's authenticity.\n\n"
             f"## The Solution\n"
             f"Our autonomous PR Engineer cloned the code into a secure sandbox, utilized our local AI model to generate a fix, and successfully submitted a Pull Request!\n\n"
-            f"*This post was generated autonomously by the bug-bot Content Engine.*"
+            f"*This post was generated autonomously by the CodeMechanic-Bot Content Engine.*"
         )
         
         try:

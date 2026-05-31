@@ -3,7 +3,7 @@ import requests
 import time
 
 def main():
-    with open('c:/Users/grey/Projects/dev/bug-bot/.env', 'r') as f:
+    with open('c:/Users/grey/Projects/dev/CodeMechanic-Bot/.env', 'r') as f:
         for line in f:
             if line.startswith('GITHUB_TOKEN='):
                 token = line.strip().split('=', 1)[1]

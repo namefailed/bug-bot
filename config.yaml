@@ -1,5 +1,5 @@
 agent:
-  name: "bug-bot"
+  name: "CodeMechanic-Bot"
   purpose: "Autonomous bounty hunting"
   
 governance:

@@ -242,8 +242,8 @@ class CodeReviewer:
                 self.run_with_retry(["git", "config", "user.name", owner_login], cwd=workspace_path, capture_output=True, text=True)
                 self.run_with_retry(["git", "config", "user.email", f"{owner_login}@users.noreply.github.com"], cwd=workspace_path, capture_output=True, text=True)
             else:
-                self.run_with_retry(["git", "config", "user.name", "BugBot"], cwd=workspace_path, capture_output=True, text=True)
-                self.run_with_retry(["git", "config", "user.email", "bugbot@local.ai"], cwd=workspace_path, capture_output=True, text=True)
+                self.run_with_retry(["git", "config", "user.name", "CodeMechanic"], cwd=workspace_path, capture_output=True, text=True)
+                self.run_with_retry(["git", "config", "user.email", "codemechanic@local.ai"], cwd=workspace_path, capture_output=True, text=True)
             
             self.run_with_retry(["git", "commit", "--no-verify", "-m", f"fix: resolve {issue_title}\n\nFixes #{issue_number}"], cwd=workspace_path, capture_output=True, text=True)
             

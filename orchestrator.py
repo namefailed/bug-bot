@@ -1,6 +1,6 @@
 """
 Orchestrator
-The central brain of bug-bot.
+The central brain of CodeMechanic-Bot.
 Initializes the EventBus and all Agents. Maps events to their respective agent handlers.
 Runs the continuous scanning loop.
 """
@@ -30,7 +30,7 @@ logging.basicConfig(
     level=logging.INFO, 
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("bugbot.log"),
+        logging.FileHandler("codemechanic.log"),
         logging.StreamHandler()
     ]
 )
@@ -63,7 +63,7 @@ import threading
 
 class Orchestrator:
     """
-    Main controller for the bug-bot pipeline.
+    Main controller for the CodeMechanic-Bot pipeline.
     """
     def __init__(self, config_path: str = "config.yaml", stealth_mode: bool = False):
         self.bus = EventBus()
@@ -174,7 +174,7 @@ class Orchestrator:
 
     def run(self):
         """Starts the orchestrator threads."""
-        logger.info("Starting dual-mode bug-bot Orchestrator...")
+        logger.info("Starting dual-mode CodeMechanic-Bot Orchestrator...")
         
         t_bounty = threading.Thread(target=self.bounty_loop, daemon=True)
         t_researcher = threading.Thread(target=self.researcher_loop, daemon=True)

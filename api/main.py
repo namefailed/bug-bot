@@ -24,7 +24,7 @@ app.add_middleware(
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "bounty_tracker.db")
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.yaml")
 ACTIVITY_LOG = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ollama_activity.json")
-ORCHESTRATOR_LOG = os.path.join(os.path.dirname(os.path.dirname(__file__)), "bugbot.log")
+ORCHESTRATOR_LOG = os.path.join(os.path.dirname(os.path.dirname(__file__)), "codemechanic.log")
 UI_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ui")
 BOT_PROCESS = None
 LOG_FILE_HANDLE = None

@@ -84,13 +84,13 @@ If I have opened a PR on your repository and you do not wish for me to interact 
     else:
         print(f"Failed to create/update README: {file_res.text}")
 
-    # 4. Fork the main bug-bot repo so it displays on the bot's profile
-    fork_url = "https://api.github.com/repos/namefailed/bug-bot/forks"
+    # 4. Fork the main CodeMechanic-Bot repo so it displays on the bot's profile
+    fork_url = "https://api.github.com/repos/namefailed/CodeMechanic-Bot/forks"
     fork_res = requests.post(fork_url, headers=headers)
     if fork_res.status_code == 202:
-        print("Successfully forked namefailed/bug-bot to the bot's account!")
+        print("Successfully forked namefailed/CodeMechanic-Bot to the bot's account!")
     else:
-        print(f"Failed to fork bug-bot (maybe it's private?): {fork_res.text}")
+        print(f"Failed to fork CodeMechanic-Bot (maybe it's private?): {fork_res.text}")
 
 if __name__ == "__main__":
     create_profile_readme()
