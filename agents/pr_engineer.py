@@ -114,17 +114,20 @@ class PREngineer:
         context = ""
         try:
             # 0. Directory Structure (Skeleton)
-            context += "Directory Structure:\n"
+            dir_context = "Directory Structure:\n"
             for root, dirs, files in os.walk(repo_path):
                 # Ignore noisy directories
                 dirs[:] = [d for d in dirs if d not in ['.git', 'node_modules', 'target', 'venv', '__pycache__', 'dist', 'build']]
                 level = root.replace(repo_path, '').count(os.sep)
                 indent = ' ' * 4 * level
-                context += f"{indent}{os.path.basename(root)}/\n"
+                dir_context += f"{indent}{os.path.basename(root)}/\n"
                 subindent = ' ' * 4 * (level + 1)
                 for f in files:
-                    context += f"{subindent}{f}\n"
-            context += "\n"
+                    dir_context += f"{subindent}{f}\n"
+                    
+            if len(dir_context) > 3000:
+                dir_context = dir_context[:3000] + "\n...[DIRECTORY TRUNCATED]..."
+            context += dir_context + "\n\n"
 
             # 1. Pull README.md
             readme_path = os.path.join(repo_path, "README.md")
@@ -198,7 +201,10 @@ class PREngineer:
                 if os.path.isfile(full_path) and os.path.exists(full_path):
                     try:
                         with open(full_path, "r", encoding="utf-8", errors="ignore") as file_obj:
-                            context += f"--- {f} ---\n{file_obj.read()}\n\n"
+                            file_content = file_obj.read()
+                            if len(file_content) > 4000:
+                                file_content = file_content[:4000] + "\n...[FILE CONTENT TRUNCATED]..."
+                            context += f"--- {f} ---\n{file_content}\n\n"
                             found_any = True
                             
                         # AST Context Upgrade
@@ -216,7 +222,10 @@ class PREngineer:
                     try:
                         with open(dep, "r", encoding="utf-8", errors="ignore") as file_obj:
                             rel_dep = os.path.relpath(dep, repo_path).replace("\\", "/")
-                            context += f"--- {rel_dep} (Imported Dependency) ---\n{file_obj.read()}\n\n"
+                            file_content = file_obj.read()
+                            if len(file_content) > 2500:
+                                file_content = file_content[:2500] + "\n...[DEPENDENCY TRUNCATED]..."
+                            context += f"--- {rel_dep} (Imported Dependency) ---\n{file_content}\n\n"
                     except: pass
             if not found_any:
                 context += "No specific files mentioned or found.\n\n"
@@ -224,10 +233,10 @@ class PREngineer:
         except Exception as e:
             logger.error(f"PREngineer: Context Harvest failed: {e}")
             
-        # Hard limit the context to 15,000 characters (~3k-4k tokens) to prevent local model hallucination
-        if len(context) > 15000:
-            logger.warning("PREngineer: Context too large, truncating to 15k characters to protect local model.")
-            context = context[:15000] + "\n...[CONTEXT TRUNCATED]..."
+        # Hard limit the context to 18,000 characters to prevent local model hallucination
+        if len(context) > 18000:
+            logger.warning("PREngineer: Context too large, truncating to 18k characters as final safety net.")
+            context = context[:18000] + "\n...[CONTEXT TRUNCATED]..."
             
         return context
 
