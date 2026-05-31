@@ -9,6 +9,9 @@ import json
 import os
 import subprocess
 import psutil
+import asyncio
+import requests
+import datetime
 from utils.database import Database
 from agents.code_reviewer import CodeReviewer
 
@@ -39,6 +42,43 @@ def load_env_from_config():
                     os.environ["GITHUB_TOKEN"] = cfg["github_token"]
         except Exception:
             pass
+
+@app.on_event("startup")
+async def start_pr_poller():
+    asyncio.create_task(poll_prs_loop())
+
+async def poll_prs_loop():
+    while True:
+        try:
+            if os.path.exists(DB_PATH):
+                load_env_from_config()
+                github_token = os.environ.get("GITHUB_TOKEN")
+                if github_token:
+                    conn = sqlite3.connect(DB_PATH)
+                    cur = conn.cursor()
+                    cur.execute("SELECT issue_url, pr_api_url, bounty_value FROM processed_issues WHERE status = 'SUBMITTED' AND pr_api_url IS NOT NULL")
+                    rows = cur.fetchall()
+                    
+                    headers = {"Authorization": f"token {github_token}", "Accept": "application/vnd.github.v3+json"}
+                    
+                    for issue_url, pr_api_url, bounty_value in rows:
+                        try:
+                            # Use run_in_executor to avoid blocking the event loop entirely, or just block since it's a small internal app
+                            res = requests.get(pr_api_url, headers=headers, timeout=10)
+                            if res.status_code == 200:
+                                data = res.json()
+                                if data.get("merged") == True:
+                                    cur.execute("UPDATE processed_issues SET status = 'PAYOUT_CONFIRMED', amount_earned = ? WHERE issue_url = ?", (bounty_value, issue_url))
+                                    conn.commit()
+                                elif data.get("state") == "closed" and not data.get("merged"):
+                                    cur.execute("UPDATE processed_issues SET status = 'REJECTED' WHERE issue_url = ?", (issue_url,))
+                                    conn.commit()
+                        except: pass
+                    conn.close()
+        except Exception as e:
+            pass
+        
+        await asyncio.sleep(60)
 
 @app.get("/api/status")
 def get_status():
@@ -141,9 +181,9 @@ def get_analytics():
         cur.execute("SELECT status, COUNT(*) FROM processed_issues GROUP BY status")
         status_counts = {row[0]: row[1] for row in cur.fetchall()}
         
-        # Daily activity (last 7 days)
-        cur.execute("SELECT date(updated_at), COUNT(*) FROM processed_issues WHERE updated_at >= date('now', '-7 days') GROUP BY date(updated_at) ORDER BY date(updated_at)")
-        daily_activity = {row[0]: row[1] for row in cur.fetchall()}
+        # Daily activity (last 7 days sum of amount_earned)
+        cur.execute("SELECT date(updated_at), SUM(amount_earned) FROM processed_issues WHERE updated_at >= date('now', '-7 days') GROUP BY date(updated_at) ORDER BY date(updated_at)")
+        daily_activity = {row[0]: (row[1] or 0) for row in cur.fetchall()}
         
         return {"status_counts": status_counts, "daily_activity": daily_activity}
     except Exception as e:

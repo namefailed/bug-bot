@@ -147,11 +147,12 @@ class CodeReviewer:
                 self.db.mark_issue(payload.get('issue_url', ''), repo_name, "AWAITING_APPROVAL")
                 return
 
-            success = self.submit_pr(repo_name, issue_title, issue_number, proposed_fix, workspace_path, payload.get("modified_files", []))
-            if success:
+            pr_api_url_or_success = self.submit_pr(repo_name, issue_title, issue_number, proposed_fix, workspace_path, payload.get("modified_files", []))
+            if pr_api_url_or_success:
                 # Mark as submitted!
                 issue_url = payload.get('issue_url', '')
-                self.db.mark_issue(issue_url, repo_name, "SUBMITTED")
+                pr_api_url = pr_api_url_or_success if isinstance(pr_api_url_or_success, str) else None
+                self.db.mark_issue(issue_url, repo_name, "SUBMITTED", pr_api_url=pr_api_url)
                 self.publish_event(PRSubmittedEvent(payload=payload))
             else:
                 logger.error(f"CodeReviewer: PR submission failed for {repo_name}. Aborting downstream events.")
@@ -313,10 +314,10 @@ class CodeReviewer:
             
             if pr_res.status_code == 201:
                 logger.info(f"CodeReviewer: PR created successfully! {pr_res.json().get('html_url')}")
+                return pr_res.json().get('url')
             else:
                 logger.warning(f"CodeReviewer: PR creation failed: {pr_res.text}")
-            
-            return True
+                return False
             
         except Exception as e:
             logger.error(f"CodeReviewer: Error submitting PR: {e}")

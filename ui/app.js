@@ -302,10 +302,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const statusCounts = data.status_counts || {};
             const chartData = [
+                statusCounts['PAYOUT_CONFIRMED'] || 0,
                 statusCounts['SUBMITTED'] || 0,
                 (statusCounts['PENDING'] || 0) + (statusCounts['AWAITING_APPROVAL'] || 0),
-                statusCounts['ABORTED'] || 0,
-                (statusCounts['REJECTED'] || 0) + (statusCounts['REJECTED_MANUALLY'] || 0)
+                (statusCounts['ABORTED'] || 0) + (statusCounts['REJECTED'] || 0) + (statusCounts['REJECTED_MANUALLY'] || 0)
             ];
             
             if (vulnChartInstance) {
@@ -341,10 +341,10 @@ document.addEventListener('DOMContentLoaded', () => {
         vulnChartInstance = new Chart(vulnCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Submitted', 'Pending', 'Aborted', 'Rejected'],
+                labels: ['Paid', 'Submitted', 'Pending', 'Aborted/Rejected'],
                 datasets: [{
                     data: [0, 0, 0, 0],
-                    backgroundColor: ['#10b981', '#fbbf24', '#f59e0b', '#ef4444'],
+                    backgroundColor: ['#22c55e', '#3b82f6', '#fbbf24', '#ef4444'],
                     borderWidth: 0
                 }]
             },
@@ -356,10 +356,10 @@ document.addEventListener('DOMContentLoaded', () => {
             data: {
                 labels: [],
                 datasets: [{
-                    label: 'Issues Processed',
+                    label: 'Earnings (RTC)',
                     data: [],
-                    borderColor: '#cba6f7',
-                    backgroundColor: 'rgba(203, 166, 247, 0.1)',
+                    borderColor: '#a6e3a1',
+                    backgroundColor: 'rgba(166, 227, 161, 0.1)',
                     fill: true,
                     tension: 0.4
                 }]

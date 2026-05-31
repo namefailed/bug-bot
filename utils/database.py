@@ -18,6 +18,9 @@ class Database:
                         issue_url TEXT PRIMARY KEY,
                         repo_name TEXT,
                         status TEXT,
+                        bounty_value NUMERIC DEFAULT 0,
+                        pr_api_url TEXT,
+                        amount_earned NUMERIC DEFAULT 0,
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );
                     CREATE TABLE IF NOT EXISTS processed_comments (
@@ -38,13 +41,20 @@ class Database:
         except Exception as e:
             logger.error(f"Database init failed: {e}")
             
-    def mark_issue(self, issue_url: str, repo_name: str, status: str):
+    def mark_issue(self, issue_url: str, repo_name: str, status: str, bounty_value: float = 0.0, pr_api_url: str = None, amount_earned: float = 0.0):
         try:
             with self.conn:
                 self.conn.execute('''
-                    INSERT OR REPLACE INTO processed_issues (issue_url, repo_name, status, updated_at)
-                    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-                ''', (issue_url, repo_name, status))
+                    INSERT INTO processed_issues (issue_url, repo_name, status, bounty_value, pr_api_url, amount_earned, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    ON CONFLICT(issue_url) DO UPDATE SET
+                        status=excluded.status,
+                        repo_name=excluded.repo_name,
+                        bounty_value=COALESCE(NULLIF(excluded.bounty_value, 0.0), processed_issues.bounty_value),
+                        pr_api_url=COALESCE(excluded.pr_api_url, processed_issues.pr_api_url),
+                        amount_earned=COALESCE(NULLIF(excluded.amount_earned, 0.0), processed_issues.amount_earned),
+                        updated_at=CURRENT_TIMESTAMP
+                ''', (issue_url, repo_name, status, bounty_value, pr_api_url, amount_earned))
         except Exception as e:
             logger.error(f"Failed to mark issue {issue_url}: {e}")
             

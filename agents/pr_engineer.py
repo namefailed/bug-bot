@@ -408,8 +408,18 @@ Respond ONLY with a JSON object in this exact format, nothing else:
         reviewer_feedback = payload.get('reviewer_feedback', '')
         
         if not is_retry:
+            # Extract Bounty Value
+            bounty_value = 0.0
+            import re
+            match = re.search(r'\[BOUNTY:\s*([\d.]+)\s*RTC\]', issue_title, re.IGNORECASE)
+            if match:
+                try:
+                    bounty_value = float(match.group(1))
+                except:
+                    pass
+                    
             # Mark issue as pending in DB
-            self.db.mark_issue(issue_url, repo_name, "PENDING")
+            self.db.mark_issue(issue_url, repo_name, "PENDING", bounty_value=bounty_value)
             logger.info(f"PREngineer: Starting work on {repo_name} - {issue_title}")
 
             # 1. Capability Check Triage
